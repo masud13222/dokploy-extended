@@ -15,6 +15,7 @@ import {
 	updateVolumeBackupSchema,
 	volumeBackups,
 } from "@dokploy/server/db/schema";
+import { findDestinationById } from "@dokploy/server/services/destination";
 import { checkServicePermissionAndAccess } from "@dokploy/server/services/permission";
 import {
 	execAsync,
@@ -338,6 +339,7 @@ export const volumeBackupsRouter = createTRPCRouter({
 			z.object({
 				volumeBackupId: z.string().min(1),
 				filePath: z.string().min(1),
+				destinationId: z.string().min(1),
 				serverId: z.string().optional(),
 			}),
 		)
@@ -358,13 +360,16 @@ export const volumeBackupsRouter = createTRPCRouter({
 				});
 			}
 
-			const destination = vb.destination;
+			const destination = await findDestinationById(input.destinationId);
 			const rcloneFlags = getS3Credentials(destination);
 			const bucketPath = `:s3:${destination.bucket}/${input.filePath}`;
 			const linkCommand = `rclone link ${rcloneFlags.join(" ")} "${bucketPath}"`;
 
 			try {
-				const serverId = input.serverId || vb.application?.serverId || vb.compose?.serverId;
+				const serverId =
+					input.serverId ||
+					vb.application?.serverId ||
+					vb.compose?.serverId;
 				let stdout = "";
 				if (serverId) {
 					const result = await execAsyncRemote(serverId, linkCommand);

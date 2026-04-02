@@ -1,6 +1,9 @@
+import copy from "copy-to-clipboard";
+import debounce from "lodash/debounce";
 import {
 	CheckIcon,
 	ChevronsUpDown,
+	Copy,
 	Download,
 	ExternalLink,
 	Loader2,
@@ -41,25 +44,46 @@ interface Props {
 
 export const DownloadVolumeBackup = ({ volumeBackupId, serverId }: Props) => {
 	const [isOpen, setIsOpen] = useState(false);
+	const [selectedDestinationId, setSelectedDestinationId] = useState("");
 	const [selectedFile, setSelectedFile] = useState<string>("");
+	const [search, setSearch] = useState("");
+	const [debouncedSearch, setDebouncedSearch] = useState("");
 	const [isGenerating, setIsGenerating] = useState(false);
 
-	const { data: files = [], isLoading: isLoadingFiles } =
-		api.volumeBackups.listFiles.useQuery(
-			{ volumeBackupId, serverId },
-			{ enabled: isOpen },
+	const { data: destinations = [] } = api.destination.all.useQuery();
+
+	const debouncedSetSearch = debounce((value: string) => {
+		setDebouncedSearch(value);
+	}, 350);
+
+	const handleSearchChange = (value: string) => {
+		setSearch(value);
+		debouncedSetSearch(value);
+	};
+
+	const { data: files = [], isPending: isLoadingFiles } =
+		api.backup.listBackupFiles.useQuery(
+			{
+				destinationId: selectedDestinationId,
+				search: debouncedSearch,
+				serverId: serverId ?? "",
+			},
+			{
+				enabled: isOpen && !!selectedDestinationId,
+			},
 		);
 
 	const { mutateAsync: generateDownloadUrl } =
 		api.volumeBackups.generateDownloadUrl.useMutation();
 
 	const handleDownload = async () => {
-		if (!selectedFile) return;
+		if (!selectedFile || !selectedDestinationId) return;
 		setIsGenerating(true);
 		try {
 			const { url } = await generateDownloadUrl({
 				volumeBackupId,
 				filePath: selectedFile,
+				destinationId: selectedDestinationId,
 				serverId,
 			});
 			window.open(url, "_blank");
@@ -72,8 +96,18 @@ export const DownloadVolumeBackup = ({ volumeBackupId, serverId }: Props) => {
 		}
 	};
 
+	const handleOpenChange = (open: boolean) => {
+		setIsOpen(open);
+		if (!open) {
+			setSelectedDestinationId("");
+			setSelectedFile("");
+			setSearch("");
+			setDebouncedSearch("");
+		}
+	};
+
 	return (
-		<Dialog open={isOpen} onOpenChange={setIsOpen}>
+		<Dialog open={isOpen} onOpenChange={handleOpenChange}>
 			<DialogTrigger asChild>
 				<Button variant="ghost" size="icon">
 					<Download className="size-4 transition-colors" />
@@ -86,14 +120,88 @@ export const DownloadVolumeBackup = ({ volumeBackupId, serverId }: Props) => {
 						Download Volume Backup
 					</DialogTitle>
 					<DialogDescription>
-						Select a backup file to download locally
+						Select a destination and backup file to download locally
 					</DialogDescription>
 				</DialogHeader>
 
 				<div className="grid gap-4">
+					{/* Destination selector */}
 					<div className="flex flex-col gap-2">
-						<label className="text-sm font-medium">Backup File</label>
+						<label className="text-sm font-medium">Destination</label>
 						<Popover>
+							<PopoverTrigger asChild>
+								<Button
+									variant="outline"
+									className={cn(
+										"w-full justify-between !bg-input",
+										!selectedDestinationId && "text-muted-foreground",
+									)}
+								>
+									{selectedDestinationId
+										? destinations.find(
+												(d) => d.destinationId === selectedDestinationId,
+											)?.name
+										: "Select Destination"}
+									<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+								</Button>
+							</PopoverTrigger>
+							<PopoverContent className="p-0" align="start">
+								<Command>
+									<CommandInput
+										placeholder="Search destinations..."
+										className="h-9"
+									/>
+									<CommandEmpty>No destinations found.</CommandEmpty>
+									<ScrollArea className="h-48">
+										<CommandGroup>
+											{destinations.map((destination) => (
+												<CommandItem
+													value={destination.destinationId}
+													key={destination.destinationId}
+													onSelect={() => {
+														setSelectedDestinationId(destination.destinationId);
+														setSelectedFile("");
+														setSearch("");
+														setDebouncedSearch("");
+													}}
+												>
+													{destination.name}
+													<CheckIcon
+														className={cn(
+															"ml-auto h-4 w-4",
+															destination.destinationId === selectedDestinationId
+																? "opacity-100"
+																: "opacity-0",
+														)}
+													/>
+												</CommandItem>
+											))}
+										</CommandGroup>
+									</ScrollArea>
+								</Command>
+							</PopoverContent>
+						</Popover>
+					</div>
+
+					{/* Backup file selector */}
+					<div className="flex flex-col gap-2">
+						<label className="text-sm font-medium flex items-center gap-2">
+							Search Backup Files
+							{selectedFile && (
+								<span className="inline-flex items-center gap-1 border rounded px-1.5 py-0.5 text-[10px] font-mono max-w-[200px] truncate">
+									{selectedFile.split("/").pop()}
+									<Copy
+										className="size-3 cursor-pointer shrink-0"
+										onClick={(e) => {
+											e.stopPropagation();
+											copy(selectedFile);
+											toast.success("Path copied to clipboard");
+										}}
+									/>
+								</span>
+							)}
+						</label>
+						<Popover modal>
 							<PopoverTrigger asChild>
 								<Button
 									variant="outline"
@@ -101,46 +209,66 @@ export const DownloadVolumeBackup = ({ volumeBackupId, serverId }: Props) => {
 										"w-full justify-between !bg-input",
 										!selectedFile && "text-muted-foreground",
 									)}
+									disabled={!selectedDestinationId}
 								>
 									<span className="truncate text-left flex-1">
 										{selectedFile
-											? selectedFile.split("/").pop()
-											: "Select a backup file"}
+											? selectedFile.split("/").pop() || selectedFile
+											: selectedDestinationId
+												? "Search and select a backup file"
+												: "Select a destination first"}
 									</span>
 									<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
 								</Button>
 							</PopoverTrigger>
-							<PopoverContent className="p-0 w-[460px]" align="start">
+							<PopoverContent className="p-0" align="start">
 								<Command>
 									<CommandInput
 										placeholder="Search backup files..."
+										value={search}
+										onValueChange={handleSearchChange}
 										className="h-9"
 									/>
 									{isLoadingFiles ? (
 										<div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
 											<Loader2 className="size-4 animate-spin" />
-											Loading backup files...
+											Loading files...
+										</div>
+									) : files.length === 0 && search ? (
+										<div className="py-6 text-center text-sm text-muted-foreground">
+											No files found for "{search}"
 										</div>
 									) : files.length === 0 ? (
-										<CommandEmpty>No backup files found</CommandEmpty>
+										<div className="py-6 text-center text-sm text-muted-foreground">
+											No backup files available
+										</div>
 									) : (
 										<ScrollArea className="h-64">
-											<CommandGroup>
+											<CommandGroup className="w-96">
 												{files.map((file) => (
 													<CommandItem
-														value={file.FullPath}
-														key={file.FullPath}
-														onSelect={() => setSelectedFile(file.FullPath)}
+														value={file.Path}
+														key={file.Path}
+														onSelect={() => {
+															setSelectedFile(file.Path);
+															if (file.IsDir) {
+																setSearch(`${file.Path}/`);
+																setDebouncedSearch(`${file.Path}/`);
+															} else {
+																setSearch(file.Path);
+																setDebouncedSearch(file.Path);
+															}
+														}}
 													>
 														<div className="flex w-full flex-col gap-1">
 															<div className="flex w-full justify-between items-center">
-																<span className="font-medium text-sm truncate max-w-[300px]">
-																	{file.Name || file.Path}
+																<span className="font-medium text-sm truncate max-w-[280px]">
+																	{file.Path}
 																</span>
 																<CheckIcon
 																	className={cn(
 																		"ml-auto h-4 w-4 shrink-0",
-																		file.FullPath === selectedFile
+																		file.Path === selectedFile
 																			? "opacity-100"
 																			: "opacity-0",
 																	)}
@@ -148,10 +276,11 @@ export const DownloadVolumeBackup = ({ volumeBackupId, serverId }: Props) => {
 															</div>
 															<div className="flex items-center gap-3 text-xs text-muted-foreground">
 																<span>{formatBytes(file.Size)}</span>
-																{file.ModTime && (
-																	<span>
-																		{new Date(file.ModTime).toLocaleString()}
-																	</span>
+																{file.IsDir && (
+																	<span className="text-blue-500">Directory</span>
+																)}
+																{file.Hashes?.MD5 && (
+																	<span>MD5: {file.Hashes.MD5}</span>
 																)}
 															</div>
 														</div>
@@ -164,24 +293,15 @@ export const DownloadVolumeBackup = ({ volumeBackupId, serverId }: Props) => {
 							</PopoverContent>
 						</Popover>
 					</div>
-
-					{selectedFile && (
-						<p className="text-xs text-muted-foreground break-all">
-							Selected: {selectedFile}
-						</p>
-					)}
 				</div>
 
 				<DialogFooter>
-					<Button
-						variant="outline"
-						onClick={() => setIsOpen(false)}
-					>
+					<Button variant="outline" onClick={() => handleOpenChange(false)}>
 						Cancel
 					</Button>
 					<Button
 						onClick={handleDownload}
-						disabled={!selectedFile || isGenerating}
+						disabled={!selectedFile || !selectedDestinationId || isGenerating}
 						isLoading={isGenerating}
 					>
 						<ExternalLink className="mr-2 size-4" />

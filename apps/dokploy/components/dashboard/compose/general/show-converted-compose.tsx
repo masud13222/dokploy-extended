@@ -1,4 +1,4 @@
-import { Loader2, Puzzle, RefreshCw } from "lucide-react";
+import { Loader2, Puzzle, RefreshCw, Rocket } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AlertBlock } from "@/components/shared/alert-block";
@@ -33,6 +33,8 @@ export const ShowConvertedCompose = ({ composeId }: Props) => {
 	);
 
 	const { mutateAsync, isPending } = api.compose.fetchSourceType.useMutation();
+	const { mutateAsync: redeploy, isPending: isDeploying } =
+		api.compose.redeploy.useMutation();
 
 	useEffect(() => {
 		if (isOpen) {
@@ -79,26 +81,44 @@ export const ShowConvertedCompose = ({ composeId }: Props) => {
 					</div>
 				) : (
 					<>
-						<div className="flex flex-row gap-2 justify-end my-4">
-							<Button
-								variant="secondary"
-								isLoading={isPending}
-								onClick={() => {
-									mutateAsync({ composeId })
-										.then(() => {
-											refetch();
-											toast.success("Fetched source type");
-										})
-										.catch((err) => {
-											toast.error("Error fetching source type", {
-												description: err.message,
-											});
+					<div className="flex flex-row gap-2 justify-end my-4">
+						<Button
+							variant="secondary"
+							isLoading={isPending}
+							onClick={() => {
+								mutateAsync({ composeId })
+									.then(() => {
+										refetch();
+										toast.success("Fetched source type");
+									})
+									.catch((err) => {
+										toast.error("Error fetching source type", {
+											description: err.message,
 										});
-								}}
-							>
-								Refresh <RefreshCw className="ml-2 h-4 w-4" />
-							</Button>
-						</div>
+									});
+							}}
+						>
+							Refresh <RefreshCw className="ml-2 h-4 w-4" />
+						</Button>
+						<Button
+							variant="default"
+							isLoading={isDeploying}
+							onClick={() => {
+								redeploy({ composeId })
+									.then(() => {
+										toast.success("Deployment started successfully");
+										setIsOpen(false);
+									})
+									.catch((err) => {
+										toast.error("Failed to deploy", {
+											description: err.message,
+										});
+									});
+							}}
+						>
+							Deploy <Rocket className="ml-2 h-4 w-4" />
+						</Button>
+					</div>
 
 						<pre>
 							<CodeEditor

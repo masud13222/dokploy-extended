@@ -560,7 +560,7 @@ export const generateConfigContainer = (
 					// default config if no updateConfigSwarm provided
 					UpdateConfig: {
 						Parallelism: 1,
-						Order: "stop-first",
+						Order: "start-first",
 					},
 				}),
 		...(sanitizedStopGracePeriodSwarm !== null &&
