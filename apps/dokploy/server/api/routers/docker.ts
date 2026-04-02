@@ -39,10 +39,17 @@ export const dockerRouter = createTRPCRouter({
 					.string()
 					.min(1)
 					.regex(containerIdRegex, "Invalid container id."),
+				serverId: z.string().optional(),
 			}),
 		)
 		.mutation(async ({ input, ctx }) => {
-			const result = await containerRestart(input.containerId);
+			if (input.serverId) {
+				const server = await findServerById(input.serverId);
+				if (server.organizationId !== ctx.session?.activeOrganizationId) {
+					throw new TRPCError({ code: "UNAUTHORIZED" });
+				}
+			}
+			const result = await containerRestart(input.containerId, input.serverId);
 			await audit(ctx, {
 				action: "start",
 				resourceType: "docker",

@@ -354,20 +354,22 @@ export const getContainersByAppLabel = async (
 	return [];
 };
 
-export const containerRestart = async (containerId: string) => {
+export const containerRestart = async (
+	containerId: string,
+	serverId?: string,
+) => {
 	try {
-		const { stdout, stderr } = await execAsync(
-			`docker container restart ${containerId}`,
-		);
+		const command = `docker container restart ${containerId}`;
+		const { stderr } = serverId
+			? await execAsyncRemote(serverId, command)
+			: await execAsync(command);
 
 		if (stderr) {
 			console.error(`Error: ${stderr}`);
 			return;
 		}
 
-		const config = JSON.parse(stdout);
-
-		return config;
+		return true;
 	} catch {}
 };
 

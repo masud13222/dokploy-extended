@@ -22,6 +22,7 @@ import { ShowSchedules } from "@/components/dashboard/application/schedules/show
 import { ShowVolumeBackups } from "@/components/dashboard/application/volume-backups/show-volume-backups";
 import { AddCommandCompose } from "@/components/dashboard/compose/advanced/add-command";
 import { IsolatedDeploymentTab } from "@/components/dashboard/compose/advanced/add-isolation";
+import { ShowComposeContainers } from "@/components/dashboard/compose/containers/show-compose-containers";
 import { DeleteService } from "@/components/dashboard/compose/delete-service";
 import { ShowGeneralCompose } from "@/components/dashboard/compose/general/show";
 import { ShowDockerLogsCompose } from "@/components/dashboard/compose/logs/show";
@@ -61,7 +62,8 @@ type TabState =
 	| "deployments"
 	| "domains"
 	| "monitoring"
-	| "volumeBackups";
+	| "volumeBackups"
+	| "containers";
 
 const Service = (
 	props: InferGetServerSidePropsType<typeof getServerSideProps>,
@@ -257,9 +259,10 @@ const Service = (
 													Volume Backups
 												</TabsTrigger>
 											)}
-											{permissions?.logs.read && (
-												<TabsTrigger value="logs">Logs</TabsTrigger>
-											)}
+										<TabsTrigger value="containers">Containers</TabsTrigger>
+										{permissions?.logs.read && (
+											<TabsTrigger value="logs">Logs</TabsTrigger>
+										)}
 											{data?.sourceType !== "raw" && (
 												<TabsTrigger value="patches">Patches</TabsTrigger>
 											)}
@@ -368,7 +371,17 @@ const Service = (
 										</TabsContent>
 									)}
 
-									{permissions?.logs.read && (
+									<TabsContent value="containers">
+									<div className="flex flex-col gap-4 pt-2.5">
+										<ShowComposeContainers
+											appName={data?.appName || ""}
+											appType={data?.composeType || "docker-compose"}
+											serverId={data?.serverId || undefined}
+										/>
+									</div>
+								</TabsContent>
+
+								{permissions?.logs.read && (
 										<TabsContent value="logs">
 											<div className="flex flex-col gap-4 pt-2.5">
 												{data?.composeType === "docker-compose" ? (

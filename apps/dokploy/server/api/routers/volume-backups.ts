@@ -15,18 +15,33 @@ import {
 	updateVolumeBackupSchema,
 	volumeBackups,
 } from "@dokploy/server/db/schema";
+import { findDestinationById } from "@dokploy/server/services/destination";
+import { checkServicePermissionAndAccess } from "@dokploy/server/services/permission";
 import {
+	execAsync,
 	execAsyncRemote,
 	execAsyncStream,
 } from "@dokploy/server/utils/process/execAsync";
+import {
+	getS3Credentials,
+	normalizeS3Path,
+} from "@dokploy/server/utils/backups/utils";
 import { TRPCError } from "@trpc/server";
 import { observable } from "@trpc/server/observable";
 import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { audit } from "@/server/api/utils/audit";
 import { removeJob, schedule, updateJob } from "@/server/utils/backup";
-import { checkServicePermissionAndAccess } from "@dokploy/server/services/permission";
 import { createTRPCRouter, protectedProcedure, withPermission } from "../trpc";
+
+interface RcloneFile {
+	Path: string;
+	Name: string;
+	Size: number;
+	IsDir: boolean;
+	ModTime?: string;
+	Hashes?: Record<string, string>;
+}
 
 export const volumeBackupsRouter = createTRPCRouter({
 	list: protectedProcedure
@@ -239,6 +254,146 @@ export const volumeBackupsRouter = createTRPCRouter({
 				return false;
 			}
 		}),
+	listFiles: protectedProcedure
+		.input(
+			z.object({
+				volumeBackupId: z.string().min(1),
+				serverId: z.string().optional(),
+			}),
+		)
+		.query(async ({ input, ctx }) => {
+			const vb = await findVolumeBackupById(input.volumeBackupId);
+			const serviceId =
+				vb.applicationId ||
+				vb.postgresId ||
+				vb.mysqlId ||
+				vb.mariadbId ||
+				vb.mongoId ||
+				vb.redisId ||
+				vb.libsqlId ||
+				vb.composeId;
+			if (serviceId) {
+				await checkServicePermissionAndAccess(ctx, serviceId, {
+					volumeBackup: ["read"],
+				});
+			}
+
+			const destination = vb.destination;
+			const rcloneFlags = getS3Credentials(destination);
+			const s3AppName =
+				vb.compose?.appName ||
+				vb.application?.appName ||
+				vb.postgres?.appName ||
+				vb.mysql?.appName ||
+				vb.mariadb?.appName ||
+				vb.mongo?.appName ||
+				vb.redis?.appName ||
+				vb.libsql?.appName ||
+				vb.appName;
+			const bucketPath = `:s3:${destination.bucket}/${s3AppName}/${normalizeS3Path(vb.prefix || "")}`;
+			const listCommand = `rclone lsjson ${rcloneFlags.join(" ")} --include "${vb.volumeName}-*.tar" "${bucketPath}" --no-mimetype 2>/dev/null`;
+
+			try {
+				let stdout = "";
+				const serverId = input.serverId || vb.application?.serverId || vb.compose?.serverId;
+				if (serverId) {
+					const result = await execAsyncRemote(serverId, listCommand);
+					stdout = result.stdout;
+				} else {
+					const result = await execAsync(listCommand);
+					stdout = result.stdout;
+				}
+
+				let files: RcloneFile[] = [];
+				try {
+					files = JSON.parse(stdout) as RcloneFile[];
+				} catch {
+					files = [];
+				}
+
+				return files
+					.map((file) => ({
+						...file,
+						FullPath: `${s3AppName}/${normalizeS3Path(vb.prefix || "")}${file.Path}`,
+					}))
+					.sort((a, b) => (b.ModTime || "").localeCompare(a.ModTime || ""));
+			} catch (error) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message:
+						error instanceof Error ? error.message : "Error listing backup files",
+					cause: error,
+				});
+			}
+		}),
+
+	generateDownloadUrl: protectedProcedure
+		.input(
+			z.object({
+				volumeBackupId: z.string().min(1),
+				filePath: z.string().min(1),
+				destinationId: z.string().min(1),
+				serverId: z.string().optional(),
+			}),
+		)
+		.mutation(async ({ input, ctx }) => {
+			const vb = await findVolumeBackupById(input.volumeBackupId);
+			const serviceId =
+				vb.applicationId ||
+				vb.postgresId ||
+				vb.mysqlId ||
+				vb.mariadbId ||
+				vb.mongoId ||
+				vb.redisId ||
+				vb.libsqlId ||
+				vb.composeId;
+			if (serviceId) {
+				await checkServicePermissionAndAccess(ctx, serviceId, {
+					volumeBackup: ["read"],
+				});
+			}
+
+			const destination = await findDestinationById(input.destinationId);
+			const rcloneFlags = getS3Credentials(destination);
+			const bucketPath = `:s3:${destination.bucket}/${input.filePath}`;
+			const linkCommand = `rclone link ${rcloneFlags.join(" ")} "${bucketPath}"`;
+
+			try {
+				const serverId =
+					input.serverId ||
+					vb.application?.serverId ||
+					vb.compose?.serverId;
+				let stdout = "";
+				if (serverId) {
+					const result = await execAsyncRemote(serverId, linkCommand);
+					stdout = result.stdout;
+				} else {
+					const result = await execAsync(linkCommand);
+					stdout = result.stdout;
+				}
+
+				const url = stdout.trim();
+				if (!url || !url.startsWith("http")) {
+					throw new TRPCError({
+						code: "BAD_REQUEST",
+						message:
+							"Could not generate download URL. Your S3 provider may not support presigned URLs. Try downloading directly from your S3 bucket.",
+					});
+				}
+				return { url };
+			} catch (error) {
+				if (error instanceof TRPCError) throw error;
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message:
+						error instanceof Error
+							? error.message
+							: "Error generating download URL",
+					cause: error,
+				});
+			}
+		}),
+
 	restoreVolumeBackupWithLogs: withPermission("volumeBackup", "restore")
 		.meta({
 			openapi: {

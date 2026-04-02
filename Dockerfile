@@ -40,7 +40,8 @@ COPY --from=build /prod/dokploy/next.config.mjs ./next.config.mjs
 COPY --from=build /prod/dokploy/public ./public
 COPY --from=build /prod/dokploy/package.json ./package.json
 COPY --from=build /prod/dokploy/drizzle ./drizzle
-COPY .env.production ./.env
+# Default production env from repo (root .env.production is optional for custom builds)
+COPY apps/dokploy/.env.production.example ./.env
 COPY --from=build /prod/dokploy/components.json ./components.json
 COPY --from=build /prod/dokploy/node_modules ./node_modules
 
@@ -69,4 +70,4 @@ EXPOSE 3000
 HEALTHCHECK --interval=10s --timeout=3s --retries=10 \
   CMD curl -fs http://localhost:3000/api/trpc/settings.health || exit 1
 
-  CMD ["sh", "-c", "pnpm run wait-for-postgres && exec pnpm start"]
+CMD ["sh", "-c", "pnpm run wait-for-postgres && exec pnpm start"]
