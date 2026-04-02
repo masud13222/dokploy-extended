@@ -1,6 +1,7 @@
 import {
 	ClipboardList,
 	DatabaseBackup,
+	Download,
 	Loader2,
 	Play,
 	Trash2,
@@ -25,6 +26,7 @@ import {
 } from "@/components/ui/tooltip";
 import { api } from "@/utils/api";
 import { ShowDeploymentsModal } from "../deployments/show-deployments-modal";
+import { DownloadVolumeBackup } from "./download-volume-backup";
 import { HandleVolumeBackups } from "./handle-volume-backups";
 import { RestoreVolumeBackups } from "./restore-volume-backups";
 
@@ -167,6 +169,21 @@ export const ShowVolumeBackups = ({
 												<ClipboardList className="size-4 transition-colors" />
 											</Button>
 										</ShowDeploymentsModal>
+										<TooltipProvider delayDuration={0}>
+											<Tooltip>
+												<TooltipTrigger asChild>
+													<div>
+														<DownloadVolumeBackup
+															volumeBackupId={volumeBackup.volumeBackupId}
+															serverId={serverId || undefined}
+														/>
+													</div>
+												</TooltipTrigger>
+												<TooltipContent>
+													Download Backup File
+												</TooltipContent>
+											</Tooltip>
+										</TooltipProvider>
 										<TooltipProvider delayDuration={0}>
 											<Tooltip>
 												<TooltipTrigger asChild>
