@@ -9,7 +9,7 @@ interface Props {
 	composeId: string;
 }
 
-type UploadStatus = "idle" | "uploading" | "success" | "error";
+type UploadStatus = "idle" | "uploading" | "processing" | "success" | "error";
 
 export const SaveZipProviderCompose = ({ composeId }: Props) => {
 	const [file, setFile] = useState<File | null>(null);
@@ -28,6 +28,7 @@ export const SaveZipProviderCompose = ({ composeId }: Props) => {
 	};
 
 	const handleCancel = () => {
+		if (status === "processing") return; // Can't cancel once server is processing
 		xhrRef.current?.abort();
 		reset();
 		toast.info("Upload cancelled");
@@ -72,7 +73,12 @@ export const SaveZipProviderCompose = ({ composeId }: Props) => {
 
 		xhr.upload.addEventListener("progress", (e) => {
 			if (e.lengthComputable) {
-				setProgress(Math.round((e.loaded / e.total) * 100));
+				const pct = Math.round((e.loaded / e.total) * 100);
+				setProgress(pct);
+				// Once file bytes are fully sent, switch to "processing" state
+				if (pct >= 100) {
+					setStatus("processing");
+				}
 			}
 		});
 
@@ -96,8 +102,10 @@ export const SaveZipProviderCompose = ({ composeId }: Props) => {
 
 		xhr.addEventListener("error", () => {
 			setStatus("error");
-			setErrorMsg("Network error — check your connection");
-			toast.error("Network error during upload");
+			const msg =
+				"Network error — upload was interrupted. If the file is large, the server may have timed out. Try again or check server logs.";
+			setErrorMsg(msg);
+			toast.error("Upload failed — network error");
 			xhrRef.current = null;
 		});
 
@@ -110,7 +118,8 @@ export const SaveZipProviderCompose = ({ composeId }: Props) => {
 		xhr.send(file);
 	};
 
-	const isUploading = status === "uploading";
+	const isUploading = status === "uploading" || status === "processing";
+	const isProcessing = status === "processing";
 
 	return (
 		<div className="flex flex-col gap-4">
@@ -180,13 +189,20 @@ export const SaveZipProviderCompose = ({ composeId }: Props) => {
 			</div>
 
 			{/* Progress bar */}
-			{isUploading && (
+			{(status === "uploading" || status === "processing") && (
 				<div className="flex flex-col gap-1.5">
 					<div className="flex justify-between text-xs text-muted-foreground">
-						<span>Uploading...</span>
-						<span>{progress}%</span>
+						{isProcessing ? (
+							<span className="flex items-center gap-1.5">
+								<Loader2 className="size-3 animate-spin" />
+								Extracting &amp; saving...
+							</span>
+						) : (
+							<span>Uploading... {progress}%</span>
+						)}
+						{!isProcessing && <span>{progress}%</span>}
 					</div>
-					<Progress value={progress} className="h-2" />
+					<Progress value={isProcessing ? 100 : progress} className="h-2" />
 				</div>
 			)}
 
@@ -222,9 +238,14 @@ export const SaveZipProviderCompose = ({ composeId }: Props) => {
 						variant="destructive"
 						size="sm"
 						onClick={handleCancel}
+						disabled={isProcessing}
 					>
-						<X className="size-4 mr-1.5" />
-						Cancel Upload
+						{isProcessing ? (
+							<Loader2 className="size-4 mr-1.5 animate-spin" />
+						) : (
+							<X className="size-4 mr-1.5" />
+						)}
+						{isProcessing ? "Processing..." : "Cancel Upload"}
 					</Button>
 				) : status === "success" ? (
 					<Button
