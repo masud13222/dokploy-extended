@@ -52,14 +52,14 @@ Run the following command on a fresh Ubuntu/Debian VPS:
 curl -sSL https://raw.githubusercontent.com/masud13222/dokploy-extended/main/install.sh | sh
 ```
 
-> **Testing/Force install** (skip port checks):
+> **Force install** (skip port checks, for testing only):
 > ```bash
 > curl -sSL https://raw.githubusercontent.com/masud13222/dokploy-extended/main/install.sh | sh -s -- --force
 > ```
 
 ### Update
 
-**Auto version detect করে update (recommended):**
+**Auto detect latest version and update (recommended):**
 ```bash
 curl -sSL https://raw.githubusercontent.com/masud13222/dokploy-extended/main/install.sh | sh -s update
 ```
@@ -76,12 +76,12 @@ docker service update --image admin12mezba/dokploy:canary --force dokploy
 
 ### Uninstall
 
-**Normal uninstall** (data volumes রাখবে):
+**Normal uninstall** (keeps data volumes):
 ```bash
 curl -sSL https://raw.githubusercontent.com/masud13222/dokploy-extended/main/uninstall.sh | sh
 ```
 
-**সব কিছু মুছে ফেলুন** (volumes + config সহ):
+**Full uninstall** (removes everything including volumes and config):
 ```bash
 curl -sSL https://raw.githubusercontent.com/masud13222/dokploy-extended/main/uninstall.sh | sh -s -- --purge
 ```
