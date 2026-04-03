@@ -25,7 +25,9 @@ import {
 } from "@/components/ui/tooltip";
 import { api } from "@/utils/api";
 import { ShowDeploymentsModal } from "../deployments/show-deployments-modal";
+import { DownloadVolumeBackup } from "./download-volume-backup";
 import { HandleVolumeBackups } from "./handle-volume-backups";
+import { RestoreVolumeBackupLocal } from "./restore-volume-backup-local";
 import { RestoreVolumeBackups } from "./restore-volume-backups";
 
 interface Props {
@@ -157,7 +159,7 @@ export const ShowVolumeBackups = ({
 											</div>
 										</div>
 									</div>
-									<div className="flex items-center gap-1.5 mt-2 sm:mt-0 sm:ml-3">
+									<div className="flex items-center gap-1.5 mt-2 sm:mt-0 sm:ml-3 flex-wrap">
 										<ShowDeploymentsModal
 											id={volumeBackup.volumeBackupId}
 											type="volumeBackup"
@@ -167,6 +169,36 @@ export const ShowVolumeBackups = ({
 												<ClipboardList className="size-4 transition-colors" />
 											</Button>
 										</ShowDeploymentsModal>
+										<TooltipProvider delayDuration={0}>
+											<Tooltip>
+												<TooltipTrigger asChild>
+													<div>
+														<DownloadVolumeBackup
+															volumeBackupId={volumeBackup.volumeBackupId}
+															serverId={serverId || undefined}
+														/>
+													</div>
+												</TooltipTrigger>
+												<TooltipContent>
+													Download Backup File
+												</TooltipContent>
+											</Tooltip>
+										</TooltipProvider>
+										<TooltipProvider delayDuration={0}>
+											<Tooltip>
+												<TooltipTrigger asChild>
+													<div>
+														<RestoreVolumeBackupLocal
+															volumeBackupId={volumeBackup.volumeBackupId}
+															volumeName={volumeBackup.volumeName}
+														/>
+													</div>
+												</TooltipTrigger>
+												<TooltipContent>
+													Restore from Local File
+												</TooltipContent>
+											</Tooltip>
+										</TooltipProvider>
 										<TooltipProvider delayDuration={0}>
 											<Tooltip>
 												<TooltipTrigger asChild>
