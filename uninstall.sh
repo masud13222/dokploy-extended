@@ -11,13 +11,18 @@ YELLOW="\033[1;33m"
 BLUE="\033[0;34m"
 NC="\033[0m"
 
-# Parse arguments — works with pipe
+# Parse arguments
 FORCE_YES=0
 DO_PURGE=0
 for arg in "$@"; do
     [ "$arg" = "--yes" ] || [ "$arg" = "-y" ] && FORCE_YES=1
     [ "$arg" = "--purge" ] && DO_PURGE=1
 done
+
+# --purge implies --yes (no prompt needed when explicitly purging)
+if [ "$DO_PURGE" = "1" ]; then
+    FORCE_YES=1
+fi
 
 echo ""
 printf "${RED}=================================================${NC}\n"
