@@ -12,6 +12,22 @@ export interface Container {
 	Name: string;
 	NetIO: string;
 }
+/**
+ * Parse a Docker stats size string like "1.2MB", "3.4kB", "512B", "1.5GiB" into MB (float).
+ */
+const parseDockerSizeToMB = (sizeStr: string): number => {
+	if (!sizeStr) return 0;
+	const s = sizeStr.trim();
+	const value = parseFloat(s);
+	if (Number.isNaN(value)) return 0;
+
+	const lower = s.toLowerCase();
+	if (lower.endsWith("gib") || lower.endsWith("gb")) return value * 1024;
+	if (lower.endsWith("mib") || lower.endsWith("mb")) return value;
+	if (lower.endsWith("kib") || lower.endsWith("kb")) return value / 1024;
+	return value / (1024 * 1024); // bytes
+};
+
 export const recordAdvancedStats = async (
 	stats: Container,
 	appName: string,
@@ -23,18 +39,20 @@ export const recordAdvancedStats = async (
 
 	await updateStatsFile(appName, "cpu", stats.CPUPerc);
 	await updateStatsFile(appName, "memory", {
-		used: stats.MemUsage.split(" ")[0],
-		total: stats.MemUsage.split(" ")[2],
+		used: stats.MemUsage.split(" / ")[0]?.trim() ?? stats.MemUsage.split(" ")[0],
+		total: stats.MemUsage.split(" / ")[1]?.trim() ?? stats.MemUsage.split(" ")[2],
 	});
 
+	const blockParts = stats.BlockIO.split(" / ");
 	await updateStatsFile(appName, "block", {
-		readMb: stats.BlockIO.split(" ")[0],
-		writeMb: stats.BlockIO.split(" ")[2],
+		readMb: parseDockerSizeToMB(blockParts[0] ?? ""),
+		writeMb: parseDockerSizeToMB(blockParts[1] ?? ""),
 	});
 
+	const netParts = stats.NetIO.split(" / ");
 	await updateStatsFile(appName, "network", {
-		inputMb: stats.NetIO.split(" ")[0],
-		outputMb: stats.NetIO.split(" ")[2],
+		inputMb: parseDockerSizeToMB(netParts[0] ?? ""),
+		outputMb: parseDockerSizeToMB(netParts[1] ?? ""),
 	});
 
 	if (appName === "dokploy") {

@@ -4,54 +4,55 @@
   </a>
   </br>
   </br>
-  <p>Join us on Discord for help, feedback, and discussions!</p>
-  <a href="https://discord.gg/2tBnJ3jDJc">
-    <img src="https://discordapp.com/api/guilds/1234073262418563112/widget.png?style=banner2" alt="Discord Shield"/>
-  </a>
 </div>
 <br />
-
 
 Dokploy is a free, self-hostable Platform as a Service (PaaS) that simplifies the deployment and management of applications and databases.
 
 ## ✨ Features
 
-Dokploy includes multiple features to make your life easier.
-
 - **Applications**: Deploy any type of application (Node.js, PHP, Python, Go, Ruby, etc.).
-- **Databases**: Create and manage databases with support for MySQL, PostgreSQL, MongoDB, MariaDB, libsql, and Redis.
-- **Backups**: Automate backups for databases to an external storage destination.
+- **Databases**: MySQL, PostgreSQL, MongoDB, MariaDB, libsql, and Redis.
+- **Backups**: Automate database backups to external S3-compatible storage.
 - **Docker Compose**: Native support for Docker Compose to manage complex applications.
-- **Multi Node**: Scale applications to multiple nodes using Docker Swarm to manage the cluster.
-- **Templates**: Deploy open-source templates (Plausible, Pocketbase, Calcom, etc.) with a single click.
-- **Traefik Integration**: Automatically integrates with Traefik for routing and load balancing.
-- **Real-time Monitoring**: Monitor CPU, memory, storage, and network usage for every resource.
-- **Docker Management**: Easily deploy and manage Docker containers.
-- **CLI/API**: Manage your applications and databases using the command line or through the API.
-- **Notifications**: Get notified when your deployments succeed or fail (via Slack, Discord, Telegram, Email, etc.).
-- **Multi Server**: Deploy and manage your applications remotely to external servers.
-- **Self-Hosted**: Self-host Dokploy on your VPS.
+- **Multi Node**: Scale to multiple nodes using Docker Swarm.
+- **Templates**: One-click deploy for open-source apps (Plausible, Pocketbase, Calcom, etc.).
+- **Traefik Integration**: Automatic routing and SSL certificate management.
+- **Real-time Monitoring**: Monitor CPU, memory, disk, and network for every container.
+- **Volume Backups**: Schedule and restore Docker volume backups.
+- **Docker Management**: Manage all Docker containers, images, and networks.
+- **Notifications**: Slack, Discord, Telegram, Email and more.
+- **Multi Server**: Deploy and manage apps on remote servers.
+- **Self-Hosted**: Full control — run on any VPS.
 
 ## 🚀 Getting Started
 
-To get started, run the following command on a VPS:
+### Fresh Install
 
-Want to skip the installation process? [Try the Dokploy Cloud](https://app.dokploy.com).
+Run the following command on a fresh Ubuntu/Debian VPS:
 
 ```bash
 curl -sSL https://dokploy.com/install.sh | sh
 ```
 
+### Update (Self-Hosted via Docker Swarm)
+
+To update your running Dokploy instance to the latest custom build:
+
+```bash
+docker service update --image admin12mezba/dokploy:canary --force dokploy
+```
+
+> Replace `admin12mezba/dokploy:canary` with your own Docker Hub image tag if you maintain a fork.
+
+### What happens on install?
+
+1. Docker + Docker Swarm is configured
+2. Traefik reverse proxy is deployed
+3. Dokploy service is started on port **3000**
+4. Access the dashboard at `http://<YOUR_SERVER_IP>:3000`
+
 For detailed documentation, visit [docs.dokploy.com](https://docs.dokploy.com).
-
-
-[Github Sponsors](https://github.com/sponsors/Siumauricio)
-
-### Contributors 🤝
-
-<a href="https://github.com/dokploy/dokploy/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=dokploy/dokploy" alt="Contributors" />
-</a>
 
 ## 📺 Video Tutorial
 

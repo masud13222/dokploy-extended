@@ -298,19 +298,38 @@ export const ContainerFreeMonitoring = ({
 						</div>
 					</CardContent>
 				</Card>
-				<Card className="bg-background">
-					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-						<CardTitle className="text-sm font-medium">Network I/O</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<div className="flex flex-col gap-2 w-full">
-							<span className="text-sm text-muted-foreground">
-								{`In MB: ${currentData.network.value.inputMb}  / Out MB: ${currentData.network.value.outputMb} `}
+			<Card className="bg-background">
+				<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+					<CardTitle className="text-sm font-medium">Network I/O</CardTitle>
+				</CardHeader>
+				<CardContent>
+					<div className="flex flex-col gap-2 w-full">
+						<div className="flex gap-4 text-sm text-muted-foreground">
+							<span>
+								↓ In:{" "}
+								<strong>
+									{typeof currentData.network.value.inputMb === "number"
+										? currentData.network.value.inputMb >= 1024
+											? `${(currentData.network.value.inputMb / 1024).toFixed(2)} GB`
+											: `${currentData.network.value.inputMb.toFixed(2)} MB`
+										: currentData.network.value.inputMb}
+								</strong>
 							</span>
-							<DockerNetworkChart acummulativeData={acummulativeData.network} />
+							<span>
+								↑ Out:{" "}
+								<strong>
+									{typeof currentData.network.value.outputMb === "number"
+										? currentData.network.value.outputMb >= 1024
+											? `${(currentData.network.value.outputMb / 1024).toFixed(2)} GB`
+											: `${currentData.network.value.outputMb.toFixed(2)} MB`
+										: currentData.network.value.outputMb}
+								</strong>
+							</span>
 						</div>
-					</CardContent>
-				</Card>
+						<DockerNetworkChart acummulativeData={acummulativeData.network} />
+					</div>
+				</CardContent>
+			</Card>
 			</div>
 		</div>
 	);
