@@ -4,6 +4,7 @@
 # Usage (default/latest): curl -sSL https://raw.githubusercontent.com/masud13222/dokploy-extended/main/install.sh | sh
 # Usage (specific version): DOKPLOY_VERSION=v1.0.0 curl -sSL https://raw.githubusercontent.com/masud13222/dokploy-extended/main/install.sh | sh
 # Usage (update): curl -sSL https://raw.githubusercontent.com/masud13222/dokploy-extended/main/install.sh | sh -s update
+# Usage (force/testing): FORCE=1 curl -sSL https://raw.githubusercontent.com/masud13222/dokploy-extended/main/install.sh | sh
 
 DOCKER_IMAGE_NAME="admin12mezba/dokploy"
 GITHUB_REPO="masud13222/dokploy-extended"
@@ -83,18 +84,33 @@ install_dokploy() {
     fi
 
     if ss -tulnp | grep ':80 ' >/dev/null; then
-        echo "Error: something is already running on port 80" >&2
-        exit 1
+        if [ "${FORCE}" = "1" ]; then
+            echo "Warning: port 80 busy, continuing anyway (FORCE=1)" >&2
+        else
+            echo "Error: something is already running on port 80" >&2
+            echo "Tip: use FORCE=1 to skip port checks (testing only)" >&2
+            exit 1
+        fi
     fi
 
     if ss -tulnp | grep ':443 ' >/dev/null; then
-        echo "Error: something is already running on port 443" >&2
-        exit 1
+        if [ "${FORCE}" = "1" ]; then
+            echo "Warning: port 443 busy, continuing anyway (FORCE=1)" >&2
+        else
+            echo "Error: something is already running on port 443" >&2
+            echo "Tip: use FORCE=1 to skip port checks (testing only)" >&2
+            exit 1
+        fi
     fi
 
     if ss -tulnp | grep ':3000 ' >/dev/null; then
-        echo "Error: something is already running on port 3000" >&2
-        exit 1
+        if [ "${FORCE}" = "1" ]; then
+            echo "Warning: port 3000 busy, continuing anyway (FORCE=1)" >&2
+        else
+            echo "Error: something is already running on port 3000" >&2
+            echo "Tip: use FORCE=1 to skip port checks (testing only)" >&2
+            exit 1
+        fi
     fi
 
     command_exists() {
