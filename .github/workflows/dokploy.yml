@@ -116,12 +116,10 @@ jobs:
             RELEASE_TAG="v${VERSION}-${SHORT_SHA}"
             TAG="latest"
 
-            # latest tag (amd64 + arm64)
             docker buildx imagetools create -t ${IMAGE_NAME}:${TAG} \
               ${IMAGE_NAME}:${TAG}-amd64 \
               ${IMAGE_NAME}:${TAG}-arm64
 
-            # release tag — same as GitHub release (e.g. v0.28.8-3fee9a9)
             docker buildx imagetools create -t ${IMAGE_NAME}:${RELEASE_TAG} \
               ${IMAGE_NAME}:${TAG}-amd64 \
               ${IMAGE_NAME}:${TAG}-arm64
@@ -149,23 +147,12 @@ jobs:
             TAG="feature"
           fi
 
-          # Docker Hub login token নিন
-          TOKEN=$(curl -s -X POST \
-            -H "Content-Type: application/json" \
-            -d "{\"username\":\"${{ secrets.DOCKERHUB_USERNAME }}\",\"password\":\"${{ secrets.DOCKERHUB_TOKEN }}\"}" \
-            https://hub.docker.com/v2/users/login | jq -r .token)
-
-          # amd64 intermediate tag delete
-          curl -s -X DELETE \
-            -H "Authorization: JWT ${TOKEN}" \
-            "https://hub.docker.com/v2/repositories/admin12mezba/dokploy/tags/${TAG}-amd64/" || true
-
-          # arm64 intermediate tag delete
-          curl -s -X DELETE \
-            -H "Authorization: JWT ${TOKEN}" \
-            "https://hub.docker.com/v2/repositories/admin12mezba/dokploy/tags/${TAG}-arm64/" || true
-
-          echo "Cleaned up ${TAG}-amd64 and ${TAG}-arm64 tags"
+          for ARCH in amd64 arm64; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
+              -H "Authorization: Bearer ${{ secrets.DOCKERHUB_TOKEN }}" \
+              "https://hub.docker.com/v2/repositories/admin12mezba/dokploy/tags/${TAG}-${ARCH}/")
+            echo "Delete ${TAG}-${ARCH}: HTTP ${STATUS}"
+          done
 
   generate-release:
     needs: [combine-manifests]
