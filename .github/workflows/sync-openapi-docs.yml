@@ -1,15 +1,6 @@
 name: Generate and Sync OpenAPI
 
 on:
-  push:
-    branches:
-      - canary
-      - main
-    paths:
-      - 'apps/dokploy/server/api/routers/**'
-      - 'packages/server/src/services/**'
-      - 'packages/server/src/db/schema/**'
-
   workflow_dispatch:
 
 jobs:

@@ -148,13 +148,16 @@ jobs:
         id: get_version
         run: |
           VERSION=$(node -p "require('./apps/dokploy/package.json').version")
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          RELEASE_TAG="${VERSION}-${SHORT_SHA}"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.get_version.outputs.version }}
-          name: ${{ steps.get_version.outputs.version }}
+          tag_name: ${{ steps.get_version.outputs.tag }}
+          name: v${{ steps.get_version.outputs.version }}
           generate_release_notes: true
           draft: false
           prerelease: false

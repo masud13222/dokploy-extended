@@ -39,11 +39,15 @@ curl -sSL https://dokploy.com/install.sh | sh
 
 To update your running Dokploy instance to the latest custom build:
 
+**Latest stable build (from `main` branch):**
+```bash
+docker service update --image admin12mezba/dokploy:latest --force dokploy
+```
+
+**Canary build (experimental, from `canary` branch):**
 ```bash
 docker service update --image admin12mezba/dokploy:canary --force dokploy
 ```
-
-> Replace `admin12mezba/dokploy:canary` with your own Docker Hub image tag if you maintain a fork.
 
 ### What happens on install?
 
