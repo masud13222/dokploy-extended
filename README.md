@@ -8,10 +8,16 @@
 
 <div align="center">
 
-## 🚀 Quick Install
+### 🚀 Quick Install
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/masud13222/dokploy-extended/main/install.sh | sh
+```
+
+### 🗑️ Uninstall
+
+```bash
+curl -sSL https://raw.githubusercontent.com/masud13222/dokploy-extended/main/uninstall.sh | sh
 ```
 
 </div>
@@ -46,9 +52,17 @@ Run the following command on a fresh Ubuntu/Debian VPS:
 curl -sSL https://raw.githubusercontent.com/masud13222/dokploy-extended/main/install.sh | sh
 ```
 
-### Update (Self-Hosted via Docker Swarm)
+> **Testing/Force install** (skip port checks):
+> ```bash
+> curl -sSL https://raw.githubusercontent.com/masud13222/dokploy-extended/main/install.sh | sh -s -- --force
+> ```
 
-To update your running Dokploy Extended instance to the latest custom build:
+### Update
+
+**Auto version detect করে update (recommended):**
+```bash
+curl -sSL https://raw.githubusercontent.com/masud13222/dokploy-extended/main/install.sh | sh -s update
+```
 
 **Latest stable build (from `main` branch):**
 ```bash
@@ -58,6 +72,18 @@ docker service update --image admin12mezba/dokploy:latest --force dokploy
 **Canary build (experimental, from `canary` branch):**
 ```bash
 docker service update --image admin12mezba/dokploy:canary --force dokploy
+```
+
+### Uninstall
+
+**Normal uninstall** (data volumes রাখবে):
+```bash
+curl -sSL https://raw.githubusercontent.com/masud13222/dokploy-extended/main/uninstall.sh | sh
+```
+
+**সব কিছু মুছে ফেলুন** (volumes + config সহ):
+```bash
+curl -sSL https://raw.githubusercontent.com/masud13222/dokploy-extended/main/uninstall.sh | sh -s -- --purge
 ```
 
 ### What happens on install?
