@@ -43,6 +43,11 @@ import {
 	fetchTemplateFiles,
 	fetchTemplatesList,
 } from "@dokploy/server/templates/github";
+import {
+	getLocalTemplateFiles,
+	getLocalTemplatesList,
+	isLocalTemplate,
+} from "@dokploy/server/templates/local";
 import { processTemplate } from "@dokploy/server/templates/processors";
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
@@ -553,7 +558,25 @@ export const composeRouter = createTRPCRouter({
 				});
 			}
 
-			const template = await fetchTemplateFiles(input.id, input.baseUrl);
+			// Check local templates first, then fall back to remote
+		const template: { config: CompleteTemplate; dockerCompose: string } =
+			isLocalTemplate(input.id)
+				? await (async () => {
+						const local = await getLocalTemplateFiles(input.id);
+						if (!local) {
+							throw new TRPCError({
+								code: "NOT_FOUND",
+								message: `Local template "${input.id}" not found`,
+							});
+						}
+						// Cast: github.CompleteTemplate and processors.CompleteTemplate differ
+						// only in config.env typing; processTemplate handles both
+						return local as unknown as {
+							config: CompleteTemplate;
+							dockerCompose: string;
+						};
+					})()
+				: await fetchTemplateFiles(input.id, input.baseUrl);
 
 			let serverIp = "127.0.0.1";
 
@@ -633,11 +656,17 @@ export const composeRouter = createTRPCRouter({
 	templates: publicProcedure
 		.input(z.object({ baseUrl: z.string().optional() }))
 		.query(async ({ input }) => {
+			// Always include local (bundled) templates
+			const localTemplates = await getLocalTemplatesList().catch(() => []);
+
 			try {
 				const githubTemplates = await fetchTemplatesList(input.baseUrl);
 
 				if (githubTemplates.length > 0) {
-					return githubTemplates;
+					// Merge: local templates first, then remote ones (dedup by id)
+					const remoteIds = new Set(githubTemplates.map((t) => t.id));
+					const uniqueLocal = localTemplates.filter((t) => !remoteIds.has(t.id));
+					return [...uniqueLocal, ...githubTemplates];
 				}
 			} catch (error) {
 				console.warn(
@@ -645,15 +674,24 @@ export const composeRouter = createTRPCRouter({
 					error,
 				);
 			}
-			return [];
+
+			return localTemplates;
 		}),
 
 	getTags: protectedProcedure
 		.input(z.object({ baseUrl: z.string().optional() }))
 		.query(async ({ input }) => {
-			const githubTemplates = await fetchTemplatesList(input.baseUrl);
+			const [githubTemplates, localTemplates] = await Promise.allSettled([
+				fetchTemplatesList(input.baseUrl),
+				getLocalTemplatesList(),
+			]);
 
-			const allTags = githubTemplates.flatMap((template) => template.tags);
+			const allTemplates = [
+				...(githubTemplates.status === "fulfilled" ? githubTemplates.value : []),
+				...(localTemplates.status === "fulfilled" ? localTemplates.value : []),
+			];
+
+			const allTags = allTemplates.flatMap((template) => template.tags);
 			const uniqueTags = _.uniq(allTags);
 			return uniqueTags;
 		}),

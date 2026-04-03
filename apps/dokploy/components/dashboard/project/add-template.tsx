@@ -323,9 +323,17 @@ export const AddTemplate = ({ environmentId, baseUrl }: Props) => {
 											viewMode === "detailed" && "h-[400px]",
 										)}
 									>
-										<Badge className="absolute top-2 right-2" variant="blue">
-											{template?.version}
+									<Badge className="absolute top-2 right-2" variant="blue">
+										{template?.version}
+									</Badge>
+									{"isLocal" in template && (
+										<Badge
+											className="absolute top-2 left-2 text-[10px]"
+											variant="secondary"
+										>
+											Built-in
 										</Badge>
+									)}
 										<div
 											className={cn(
 												"flex-none p-6 pb-3 flex flex-col items-center gap-4 bg-muted/30",
@@ -333,7 +341,12 @@ export const AddTemplate = ({ environmentId, baseUrl }: Props) => {
 											)}
 										>
 											<img
-												src={`${customBaseUrl || "https://templates.dokploy.com/"}/blueprints/${template?.id}/${template?.logo}`}
+												src={
+													// Local templates expose a full absolute URL in logo
+													template?.logo?.startsWith("http")
+														? template.logo
+														: `${customBaseUrl || "https://templates.dokploy.com/"}/blueprints/${template?.id}/${template?.logo}`
+												}
 												className={cn(
 													"object-contain",
 													viewMode === "detailed" ? "size-24" : "size-16",
