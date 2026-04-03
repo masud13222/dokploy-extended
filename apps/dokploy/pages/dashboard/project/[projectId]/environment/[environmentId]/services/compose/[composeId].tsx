@@ -220,6 +220,7 @@ const Service = (
 									<div className="flex flex-row items-center w-full overflow-auto">
 										<TabsList className="flex gap-8 max-md:gap-4 justify-start">
 											<TabsTrigger value="general">General</TabsTrigger>
+											<TabsTrigger value="containers">Containers</TabsTrigger>
 											{permissions?.envVars.read && (
 												<TabsTrigger value="environment">
 													Environment
@@ -244,7 +245,6 @@ const Service = (
 													Volume Backups
 												</TabsTrigger>
 											)}
-										<TabsTrigger value="containers">Containers</TabsTrigger>
 										{permissions?.logs.read && (
 											<TabsTrigger value="logs">Logs</TabsTrigger>
 										)}

@@ -312,13 +312,6 @@ const MENU: Menu = {
 		},
 		{
 			isSingle: true,
-			title: "Audit Logs",
-			icon: ClipboardList,
-			url: "/dashboard/settings/audit-logs",
-			isEnabled: ({ permissions }) => !!permissions?.auditLog.read,
-		},
-		{
-			isSingle: true,
 			title: "SSH Keys",
 			icon: KeyRound,
 			url: "/dashboard/settings/ssh-keys",
@@ -396,18 +389,7 @@ const MENU: Menu = {
 		},
 	],
 
-	help: [
-		{
-			name: "Documentation",
-			url: "https://docs.dokploy.com/docs/core",
-			icon: BookIcon,
-		},
-		{
-			name: "Support",
-			url: "https://discord.gg/2tBnJ3jDJc",
-			icon: CircleHelp,
-		},
-	],
+	help: [],
 } as const;
 
 /**
@@ -1096,6 +1078,7 @@ export default function Page({ children }: Props) {
 							})}
 						</SidebarMenu>
 					</SidebarGroup>
+				{help.length > 0 && (
 					<SidebarGroup className="group-data-[collapsible=icon]:hidden">
 						<SidebarGroupLabel>Extra</SidebarGroupLabel>
 						<SidebarMenu>
@@ -1118,6 +1101,7 @@ export default function Page({ children }: Props) {
 							))}
 						</SidebarMenu>
 					</SidebarGroup>
+				)}
 				</SidebarContent>
 				<SidebarFooter>
 					<SidebarMenu className="flex flex-col gap-2">
