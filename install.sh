@@ -83,32 +83,34 @@ install_dokploy() {
         exit 1
     fi
 
+    FORCE_INSTALL="${FORCE:-$2}"
+
     if ss -tulnp | grep ':80 ' >/dev/null; then
-        if [ "${FORCE}" = "1" ]; then
+        if [ "${FORCE_INSTALL}" = "1" ]; then
             echo "Warning: port 80 busy, continuing anyway (FORCE=1)" >&2
         else
             echo "Error: something is already running on port 80" >&2
-            echo "Tip: use FORCE=1 to skip port checks (testing only)" >&2
+            echo "Tip: use: curl -sSL <url>/install.sh | sh -s -- --force" >&2
             exit 1
         fi
     fi
 
     if ss -tulnp | grep ':443 ' >/dev/null; then
-        if [ "${FORCE}" = "1" ]; then
+        if [ "${FORCE_INSTALL}" = "1" ]; then
             echo "Warning: port 443 busy, continuing anyway (FORCE=1)" >&2
         else
             echo "Error: something is already running on port 443" >&2
-            echo "Tip: use FORCE=1 to skip port checks (testing only)" >&2
+            echo "Tip: use: curl -sSL <url>/install.sh | sh -s -- --force" >&2
             exit 1
         fi
     fi
 
     if ss -tulnp | grep ':3000 ' >/dev/null; then
-        if [ "${FORCE}" = "1" ]; then
+        if [ "${FORCE_INSTALL}" = "1" ]; then
             echo "Warning: port 3000 busy, continuing anyway (FORCE=1)" >&2
         else
             echo "Error: something is already running on port 3000" >&2
-            echo "Tip: use FORCE=1 to skip port checks (testing only)" >&2
+            echo "Tip: use: curl -sSL <url>/install.sh | sh -s -- --force" >&2
             exit 1
         fi
     fi
@@ -274,6 +276,8 @@ update_dokploy() {
 
 if [ "$1" = "update" ]; then
     update_dokploy
+elif [ "$1" = "--force" ] || [ "$1" = "force" ]; then
+    FORCE=1 install_dokploy
 else
     install_dokploy
 fi
