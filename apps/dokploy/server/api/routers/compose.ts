@@ -50,6 +50,7 @@ import {
 } from "@dokploy/server/templates/local";
 import { processTemplate } from "@dokploy/server/templates/processors";
 import { TRPCError } from "@trpc/server";
+import { zfd } from "zod-form-data";
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import _ from "lodash";
 import { nanoid } from "nanoid";
@@ -702,6 +703,8 @@ export const composeRouter = createTRPCRouter({
 				service: ["create"],
 			});
 
+			const composeForDisconnect = await findComposeById(input.composeId);
+
 			await updateCompose(input.composeId, {
 				repository: null,
 				branch: null,
@@ -731,13 +734,23 @@ export const composeRouter = createTRPCRouter({
 				customGitUrl: null,
 				customGitSSHKeyId: null,
 
-				sourceType: "github", // Reset to default
+				sourceType: "github",
 				composeStatus: "idle",
 				watchPaths: null,
 				enableSubmodules: false,
 			});
 
-			const composeForDisconnect = await findComposeById(input.composeId);
+			// Clean up the cloned code directory so stale files don't linger
+			// when the user switches to a different source or re-clones.
+			try {
+				await removeComposeDirectory(
+					composeForDisconnect.appName,
+					composeForDisconnect.serverId ?? undefined,
+				);
+			} catch (_) {
+				// Non-fatal: directory may not exist yet
+			}
+
 			await audit(ctx, {
 				action: "update",
 				resourceType: "compose",
@@ -1119,5 +1132,100 @@ export const composeRouter = createTRPCRouter({
 				items,
 				total: countResult[0]?.count ?? 0,
 			};
+		}),
+
+	// Upload a ZIP file containing docker-compose.yml and set it as the raw compose source.
+	// No DB migration needed — extracts the compose file and sets sourceType to "raw".
+	dropDeployment: protectedProcedure
+		.input(
+			zfd.formData({
+				composeId: z.string(),
+				zip: zfd.file(),
+			}),
+		)
+		.mutation(async ({ input, ctx }) => {
+			await checkServicePermissionAndAccess(ctx, input.composeId, {
+				deployment: ["create"],
+			});
+
+			const compose = await findComposeById(input.composeId);
+
+			// Extract docker-compose.yml (or docker-compose.yaml) from the ZIP
+			const arrayBuffer = await input.zip.arrayBuffer();
+			const AdmZip = (await import("adm-zip")).default;
+			const zip = new AdmZip(Buffer.from(arrayBuffer));
+
+			const candidates = [
+				"docker-compose.yml",
+				"docker-compose.yaml",
+				"compose.yml",
+				"compose.yaml",
+			];
+
+			let composeContent: string | null = null;
+
+			// Search in root and one level deep
+			for (const entry of zip.getEntries()) {
+				const name = entry.entryName
+					.split("/")
+					.filter(Boolean)
+					.pop()
+					?.toLowerCase();
+				if (name && candidates.includes(name) && !entry.isDirectory) {
+					composeContent = entry.getData().toString("utf-8");
+					break;
+				}
+			}
+
+			if (!composeContent) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message:
+						"No docker-compose.yml found in ZIP. Make sure the file exists at the root or one folder level deep.",
+				});
+			}
+
+			// Save compose content and switch source to raw
+			await updateCompose(input.composeId, {
+				composeFile: composeContent,
+				sourceType: "raw",
+			});
+
+			// Trigger deployment
+			const jobData: DeploymentJob = {
+				composeId: compose.composeId,
+				titleLog: "ZIP Upload deployment",
+				descriptionLog: "Deployed from uploaded ZIP file",
+				type: "deploy",
+				applicationType: "compose",
+				server: !!compose.serverId,
+			};
+
+			if (IS_CLOUD && compose.serverId) {
+				jobData.serverId = compose.serverId;
+				deploy(jobData).catch((error) => {
+					console.error("Background deployment failed:", error);
+				});
+				await audit(ctx, {
+					action: "deploy",
+					resourceType: "compose",
+					resourceId: compose.composeId,
+					resourceName: compose.name,
+				});
+				return true;
+			}
+
+			await myQueue.add(
+				"deployments",
+				{ ...jobData },
+				{ removeOnComplete: true, removeOnFail: true },
+			);
+			await audit(ctx, {
+				action: "deploy",
+				resourceType: "compose",
+				resourceId: compose.composeId,
+				resourceName: compose.name,
+			});
+			return true;
 		}),
 });

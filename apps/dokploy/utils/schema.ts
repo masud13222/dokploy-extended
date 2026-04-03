@@ -17,3 +17,10 @@ export const uploadFileSchema = zfd.formData({
 });
 
 export type UploadFile = z.infer<typeof uploadFileSchema>;
+
+export const uploadComposeFileSchema = zfd.formData({
+	composeId: z.string().optional(),
+	zip: zfd.file(),
+});
+
+export type UploadComposeFile = z.infer<typeof uploadComposeFileSchema>;
