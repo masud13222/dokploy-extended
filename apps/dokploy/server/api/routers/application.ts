@@ -600,6 +600,18 @@ export const applicationRouter = createTRPCRouter({
 				enableSubmodules: false,
 			});
 			const application = await findApplicationById(input.applicationId);
+
+			// Clean up the cloned code directory so stale files don't remain
+			// when the user switches to a different source.
+			try {
+				await removeDirectoryCode(
+					application.appName,
+					application.serverId ?? undefined,
+				);
+			} catch (_) {
+				// Non-fatal: directory may not exist yet
+			}
+
 			await audit(ctx, {
 				action: "update",
 				resourceType: "application",

@@ -1,4 +1,4 @@
-import { CodeIcon, GitBranch, Loader2 } from "lucide-react";
+import { CodeIcon, FileArchive, GitBranch, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api } from "@/utils/api";
 import { ComposeFileEditor } from "../compose-file-editor";
+import { SaveZipProviderCompose } from "../save-zip-provider-compose";
 import { ShowConvertedCompose } from "../show-converted-compose";
 import { SaveBitbucketProviderCompose } from "./save-bitbucket-provider-compose";
 import { SaveGitProviderCompose } from "./save-git-provider-compose";
@@ -21,7 +22,7 @@ import { SaveGiteaProviderCompose } from "./save-gitea-provider-compose";
 import { SaveGithubProviderCompose } from "./save-github-provider-compose";
 import { SaveGitlabProviderCompose } from "./save-gitlab-provider-compose";
 
-type TabState = "github" | "git" | "raw" | "gitlab" | "bitbucket" | "gitea";
+type TabState = "github" | "git" | "raw" | "gitlab" | "bitbucket" | "gitea" | "zip";
 interface Props {
 	composeId: string;
 }
@@ -178,15 +179,22 @@ export const ShowProviderFormCompose = ({ composeId }: Props) => {
 								<GitIcon />
 								Git
 							</TabsTrigger>
-							<TabsTrigger
-								value="raw"
-								className="rounded-none border-b-2 gap-2 border-b-transparent data-[state=active]:border-b-2 data-[state=active]:border-b-border"
-							>
-								<CodeIcon className="size-4" />
-								Raw
-							</TabsTrigger>
-						</TabsList>
-					</div>
+						<TabsTrigger
+							value="raw"
+							className="rounded-none border-b-2 gap-2 border-b-transparent data-[state=active]:border-b-2 data-[state=active]:border-b-border"
+						>
+							<CodeIcon className="size-4" />
+							Raw
+						</TabsTrigger>
+						<TabsTrigger
+							value="zip"
+							className="rounded-none border-b-2 gap-2 border-b-transparent data-[state=active]:border-b-2 data-[state=active]:border-b-border"
+						>
+							<FileArchive className="size-4" />
+							ZIP Upload
+						</TabsTrigger>
+					</TabsList>
+				</div>
 
 					<TabsContent value="github" className="w-full p-2">
 						{githubProviders && githubProviders?.length > 0 ? (
@@ -272,10 +280,14 @@ export const ShowProviderFormCompose = ({ composeId }: Props) => {
 						<SaveGitProviderCompose composeId={composeId} />
 					</TabsContent>
 
-					<TabsContent value="raw" className="w-full p-2 flex flex-col gap-4">
-						<ComposeFileEditor composeId={composeId} />
-					</TabsContent>
-				</Tabs>
+				<TabsContent value="raw" className="w-full p-2 flex flex-col gap-4">
+					<ComposeFileEditor composeId={composeId} />
+				</TabsContent>
+
+				<TabsContent value="zip" className="w-full p-2 flex flex-col gap-4">
+					<SaveZipProviderCompose composeId={composeId} />
+				</TabsContent>
+			</Tabs>
 			</CardContent>
 		</Card>
 	);
