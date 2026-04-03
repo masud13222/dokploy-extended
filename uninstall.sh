@@ -21,9 +21,23 @@ if [ "$(id -u)" != "0" ]; then
 fi
 
 # Confirm করুন
-if [ "$1" != "--yes" ]; then
+# Parse arguments
+FORCE_YES=0
+DO_PURGE=0
+for arg in "$@"; do
+    case "$arg" in
+        --yes|-y) FORCE_YES=1 ;;
+        --purge)  DO_PURGE=1 ;;
+    esac
+done
+
+if [ "$FORCE_YES" = "0" ]; then
     printf "${YELLOW}WARNING: This will remove Dokploy and all its services.${NC}\n"
-    printf "${YELLOW}Your app data (volumes) will NOT be deleted unless you use --purge.${NC}\n"
+    if [ "$DO_PURGE" = "1" ]; then
+        printf "${RED}--purge flag detected: volumes and config will also be deleted!${NC}\n"
+    else
+        printf "${YELLOW}Your app data (volumes) will NOT be deleted unless you use --purge.${NC}\n"
+    fi
     echo ""
     printf "Are you sure? Type 'yes' to continue: "
     read confirm
@@ -57,8 +71,8 @@ echo ""
 printf "${BLUE}Leaving Docker Swarm...${NC}\n"
 docker swarm leave --force 2>/dev/null && echo "  ✓ Swarm left" || echo "  - Not in swarm"
 
-# --purge flag দিলে volumes ও delete হবে
-if [ "$1" = "--purge" ] || [ "$2" = "--purge" ]; then
+# --purge flag হলে volumes ও delete হবে
+if [ "$DO_PURGE" = "1" ]; then
     echo ""
     printf "${RED}--purge flag detected. Removing all data volumes...${NC}\n"
     docker volume rm dokploy 2>/dev/null && echo "  ✓ dokploy volume removed" || echo "  - not found"
@@ -73,7 +87,7 @@ fi
 echo ""
 printf "${GREEN}=================================================${NC}\n"
 printf "${GREEN}  Dokploy Extended uninstalled successfully!${NC}\n"
-if [ "$1" != "--purge" ] && [ "$2" != "--purge" ]; then
+if [ "$DO_PURGE" = "0" ]; then
     printf "${YELLOW}  Note: Data volumes were kept. Use --purge to delete them.${NC}\n"
 fi
 printf "${GREEN}=================================================${NC}\n"
