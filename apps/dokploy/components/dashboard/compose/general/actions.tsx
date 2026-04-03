@@ -238,6 +238,42 @@ export const ComposeActions = ({ composeId }: Props) => {
 					/>
 				</div>
 			)}
+			{canUpdateService && data?.composeType === "docker-compose" && (
+				<TooltipProvider delayDuration={0}>
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<div className="flex flex-row items-center gap-2 rounded-md px-4 py-2 border cursor-pointer">
+								<span className="text-sm font-medium">Pull Images</span>
+								<Switch
+									aria-label="Toggle pull latest images"
+									checked={data?.command?.includes("--pull always") || false}
+									onCheckedChange={async (enabled) => {
+										const appName = data?.appName || "";
+										const path = data?.sourceType === "raw" ? "docker-compose.yml" : (data?.composePath || "docker-compose.yml");
+										const baseCmd = `compose -p ${appName} -f ${path} up -d --build --remove-orphans`;
+										const newCmd = enabled ? `${baseCmd} --pull always` : baseCmd;
+										await update({
+											composeId,
+											command: enabled ? newCmd : "",
+										})
+											.then(async () => {
+												toast.success(enabled ? "Will pull latest images on deploy" : "Pull images setting disabled");
+												await refetch();
+											})
+											.catch(() => {
+												toast.error("Error updating pull images setting");
+											});
+									}}
+									className="flex flex-row gap-2 items-center data-[state=checked]:bg-primary"
+								/>
+							</div>
+						</TooltipTrigger>
+						<TooltipContent>
+							<p>When enabled, always pulls latest Docker images on deploy</p>
+						</TooltipContent>
+					</Tooltip>
+				</TooltipProvider>
+			)}
 		</div>
 	);
 };

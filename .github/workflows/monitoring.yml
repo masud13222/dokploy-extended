@@ -5,7 +5,7 @@ on:
     branches: [main, canary]
 
 env:
-  IMAGE_NAME: dokploy/monitoring
+  IMAGE_NAME: admin12mezba/monitoring
 
 jobs:
   docker-amd:

@@ -3,9 +3,11 @@ import {
 	RefreshCw,
 	RotateCcw,
 	Server,
+	Trash2,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { DialogAction } from "@/components/shared/dialog-action";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -43,6 +45,7 @@ export const ShowComposeContainers = ({
 	serverId,
 }: Props) => {
 	const [restartingIds, setRestartingIds] = useState<Set<string>>(new Set());
+	const [recreatingIds, setRecreatingIds] = useState<Set<string>>(new Set());
 
 	const {
 		data: containers = [],
@@ -63,6 +66,9 @@ export const ShowComposeContainers = ({
 	const { mutateAsync: restartContainer } =
 		api.docker.restartContainer.useMutation();
 
+	const { mutateAsync: removeContainer } =
+		api.docker.removeContainer.useMutation();
+
 	const handleRestart = async (containerId: string) => {
 		setRestartingIds((prev) => new Set(prev).add(containerId));
 		try {
@@ -75,6 +81,25 @@ export const ShowComposeContainers = ({
 			);
 		} finally {
 			setRestartingIds((prev) => {
+				const next = new Set(prev);
+				next.delete(containerId);
+				return next;
+			});
+		}
+	};
+
+	const handleRecreate = async (containerId: string) => {
+		setRecreatingIds((prev) => new Set(prev).add(containerId));
+		try {
+			await removeContainer({ containerId, serverId });
+			toast.success("Container removed — Docker Compose will recreate it on next deploy");
+			await refetch();
+		} catch (error) {
+			toast.error(
+				error instanceof Error ? error.message : "Failed to remove container",
+			);
+		} finally {
+			setRecreatingIds((prev) => {
 				const next = new Set(prev);
 				next.delete(containerId);
 				return next;
@@ -171,6 +196,37 @@ export const ShowComposeContainers = ({
 											</TooltipTrigger>
 											<TooltipContent>
 												Restart this container
+											</TooltipContent>
+										</Tooltip>
+									</TooltipProvider>
+									<TooltipProvider delayDuration={0}>
+										<Tooltip>
+											<TooltipTrigger asChild>
+												<div>
+													<DialogAction
+														title="Recreate Container"
+														description={`This will remove the container "${container.name}" and it will be recreated on the next deploy. Are you sure?`}
+														type="destructive"
+														onClick={() => handleRecreate(container.containerId)}
+													>
+														<Button
+															variant="outline"
+															size="sm"
+															disabled={recreatingIds.has(container.containerId)}
+															className="group hover:border-red-500/50 hover:text-red-500"
+														>
+															{recreatingIds.has(container.containerId) ? (
+																<Loader2 className="size-4 animate-spin" />
+															) : (
+																<Trash2 className="size-4 group-hover:text-red-500" />
+															)}
+															<span className="ml-1.5">Recreate</span>
+														</Button>
+													</DialogAction>
+												</div>
+											</TooltipTrigger>
+											<TooltipContent>
+												Remove container (will be recreated on next deploy)
 											</TooltipContent>
 										</Tooltip>
 									</TooltipProvider>

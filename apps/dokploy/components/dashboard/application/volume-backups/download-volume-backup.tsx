@@ -113,7 +113,7 @@ export const DownloadVolumeBackup = ({ volumeBackupId, serverId }: Props) => {
 					<Download className="size-4 transition-colors" />
 				</Button>
 			</DialogTrigger>
-			<DialogContent className="sm:max-w-lg">
+			<DialogContent className="sm:max-w-lg overflow-hidden">
 				<DialogHeader>
 					<DialogTitle className="flex items-center gap-2">
 						<Download className="size-4" />
@@ -185,22 +185,22 @@ export const DownloadVolumeBackup = ({ volumeBackupId, serverId }: Props) => {
 
 					{/* Backup file selector */}
 					<div className="flex flex-col gap-2">
-						<label className="text-sm font-medium flex items-center gap-2">
-							Search Backup Files
-							{selectedFile && (
-								<span className="inline-flex items-center gap-1 border rounded px-1.5 py-0.5 text-[10px] font-mono max-w-[200px] truncate">
-									{selectedFile.split("/").pop()}
-									<Copy
-										className="size-3 cursor-pointer shrink-0"
-										onClick={(e) => {
-											e.stopPropagation();
-											copy(selectedFile);
-											toast.success("Path copied to clipboard");
-										}}
-									/>
-								</span>
-							)}
-						</label>
+					<label className="text-sm font-medium flex flex-wrap items-center gap-2">
+						Search Backup Files
+						{selectedFile && (
+							<span className="inline-flex items-center gap-1 border rounded px-1.5 py-0.5 text-[10px] font-mono min-w-0 max-w-full overflow-hidden">
+								<span className="truncate block max-w-[260px]">{selectedFile.split("/").pop()}</span>
+								<Copy
+									className="size-3 cursor-pointer shrink-0"
+									onClick={(e) => {
+										e.stopPropagation();
+										copy(selectedFile);
+										toast.success("Path copied to clipboard");
+									}}
+								/>
+							</span>
+						)}
+					</label>
 						<Popover modal>
 							<PopoverTrigger asChild>
 								<Button

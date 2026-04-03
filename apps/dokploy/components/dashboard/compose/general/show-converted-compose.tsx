@@ -1,4 +1,4 @@
-import { Loader2, Puzzle, RefreshCw, Rocket } from "lucide-react";
+import { Loader2, Pencil, Puzzle, RefreshCw, Rocket, Save, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AlertBlock } from "@/components/shared/alert-block";
@@ -20,6 +20,9 @@ interface Props {
 
 export const ShowConvertedCompose = ({ composeId }: Props) => {
 	const [isOpen, setIsOpen] = useState(false);
+	const [isEditing, setIsEditing] = useState(false);
+	const [editedContent, setEditedContent] = useState<string>("");
+
 	const {
 		data: compose,
 		error,
@@ -35,6 +38,8 @@ export const ShowConvertedCompose = ({ composeId }: Props) => {
 	const { mutateAsync, isPending } = api.compose.fetchSourceType.useMutation();
 	const { mutateAsync: redeploy, isPending: isDeploying } =
 		api.compose.redeploy.useMutation();
+	const { mutateAsync: updateCompose, isPending: isSaving } =
+		api.compose.update.useMutation();
 
 	useEffect(() => {
 		if (isOpen) {
@@ -46,28 +51,77 @@ export const ShowConvertedCompose = ({ composeId }: Props) => {
 		}
 	}, [isOpen]);
 
+	useEffect(() => {
+		if (compose) {
+			setEditedContent(compose);
+		}
+	}, [compose]);
+
+	const handleEdit = () => {
+		setEditedContent(compose || "");
+		setIsEditing(true);
+	};
+
+	const handleCancelEdit = () => {
+		setEditedContent(compose || "");
+		setIsEditing(false);
+	};
+
+	const handleSave = async () => {
+		try {
+			await updateCompose({ composeId, composeFile: editedContent });
+			toast.success("Compose file saved successfully");
+			setIsEditing(false);
+			refetch();
+		} catch (err) {
+			toast.error("Failed to save compose file", {
+				description: err instanceof Error ? err.message : undefined,
+			});
+		}
+	};
+
+	const handleDeployEdited = async () => {
+		try {
+			if (isEditing) {
+				await updateCompose({ composeId, composeFile: editedContent });
+			}
+			await redeploy({ composeId });
+			toast.success("Deployment started successfully");
+			setIsEditing(false);
+			setIsOpen(false);
+		} catch (err) {
+			toast.error("Failed to deploy", {
+				description: err instanceof Error ? err.message : undefined,
+			});
+		}
+	};
+
 	return (
-		<Dialog open={isOpen} onOpenChange={setIsOpen}>
+		<Dialog open={isOpen} onOpenChange={(open) => { setIsOpen(open); if (!open) setIsEditing(false); }}>
 			<DialogTrigger asChild>
 				<Button className="max-lg:w-full" variant="outline">
 					<Puzzle className="h-4 w-4" />
 					Preview Compose
 				</Button>
 			</DialogTrigger>
-			<DialogContent className="sm:max-w-6xl max-h-[50rem]">
+			<DialogContent className="sm:max-w-6xl max-h-[90vh] flex flex-col">
 				<DialogHeader>
 					<DialogTitle>Converted Compose</DialogTitle>
 					<DialogDescription>
-						Preview your docker-compose file with added domains. Note: At least
-						one domain must be specified for this conversion to take effect.
+						{isEditing
+							? "Edit the compose file below, then save or deploy directly."
+							: "Preview your docker-compose file with added domains. Note: At least one domain must be specified for this conversion to take effect."}
 					</DialogDescription>
 				</DialogHeader>
 				{isError && <AlertBlock type="error">{error?.message}</AlertBlock>}
 
-				<AlertBlock type="info" className="mb-4">
-					Preview your docker-compose file with added domains. Note: At least
-					one domain must be specified for this conversion to take effect.
-				</AlertBlock>
+				{!isEditing && (
+					<AlertBlock type="info">
+						Preview your docker-compose file with added domains. Note: At least
+						one domain must be specified for this conversion to take effect.
+					</AlertBlock>
+				)}
+
 				{isPending ? (
 					<div className="flex flex-row items-center justify-center min-h-[25rem] border p-4 rounded-md">
 						<Loader2 className="h-8 w-8 text-muted-foreground mb-2 animate-spin" />
@@ -81,53 +135,85 @@ export const ShowConvertedCompose = ({ composeId }: Props) => {
 					</div>
 				) : (
 					<>
-					<div className="flex flex-row gap-2 justify-end my-4">
-						<Button
-							variant="secondary"
-							isLoading={isPending}
-							onClick={() => {
-								mutateAsync({ composeId })
-									.then(() => {
-										refetch();
-										toast.success("Fetched source type");
-									})
-									.catch((err) => {
-										toast.error("Error fetching source type", {
-											description: err.message,
-										});
-									});
-							}}
-						>
-							Refresh <RefreshCw className="ml-2 h-4 w-4" />
-						</Button>
-						<Button
-							variant="default"
-							isLoading={isDeploying}
-							onClick={() => {
-								redeploy({ composeId })
-									.then(() => {
-										toast.success("Deployment started successfully");
-										setIsOpen(false);
-									})
-									.catch((err) => {
-										toast.error("Failed to deploy", {
-											description: err.message,
-										});
-									});
-							}}
-						>
-							Deploy <Rocket className="ml-2 h-4 w-4" />
-						</Button>
-					</div>
+						<div className="flex flex-row gap-2 justify-end my-2 flex-wrap">
+							{isEditing ? (
+								<>
+									<Button
+										variant="outline"
+										onClick={handleCancelEdit}
+										disabled={isSaving || isDeploying}
+									>
+										<X className="mr-2 h-4 w-4" />
+										Cancel
+									</Button>
+									<Button
+										variant="secondary"
+										isLoading={isSaving}
+										disabled={isDeploying}
+										onClick={handleSave}
+									>
+										<Save className="mr-2 h-4 w-4" />
+										Save
+									</Button>
+									<Button
+										variant="default"
+										isLoading={isDeploying}
+										disabled={isSaving}
+										onClick={handleDeployEdited}
+									>
+										<Rocket className="mr-2 h-4 w-4" />
+										Save & Deploy
+									</Button>
+								</>
+							) : (
+								<>
+									<Button
+										variant="secondary"
+										isLoading={isPending}
+										onClick={() => {
+											mutateAsync({ composeId })
+												.then(() => {
+													refetch();
+													toast.success("Fetched source type");
+												})
+												.catch((err) => {
+													toast.error("Error fetching source type", {
+														description: err.message,
+													});
+												});
+										}}
+									>
+										<RefreshCw className="mr-2 h-4 w-4" />
+										Refresh
+									</Button>
+									<Button
+										variant="outline"
+										onClick={handleEdit}
+									>
+										<Pencil className="mr-2 h-4 w-4" />
+										Edit
+									</Button>
+									<Button
+										variant="default"
+										isLoading={isDeploying}
+										onClick={handleDeployEdited}
+									>
+										<Rocket className="mr-2 h-4 w-4" />
+										Deploy
+									</Button>
+								</>
+							)}
+						</div>
 
-						<pre>
+						<div className="flex-1 overflow-auto">
 							<CodeEditor
-								value={compose || ""}
+								value={isEditing ? editedContent : (compose || "")}
 								language="yaml"
-								readOnly
+								readOnly={!isEditing}
 								height="50rem"
+								onChange={isEditing ? (val) => setEditedContent(val || "") : undefined}
 							/>
-						</pre>
+						</div>
 					</>
 				)}
 			</DialogContent>
