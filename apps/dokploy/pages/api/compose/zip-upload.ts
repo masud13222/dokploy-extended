@@ -1,13 +1,14 @@
+import { execFile } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
+import { promisify } from "node:util";
 import {
 	findComposeById,
 	updateCompose,
 	validateRequest,
 } from "@dokploy/server";
-import AdmZip from "adm-zip";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { myQueue } from "@/server/queues/queueSetup";
 import type { DeploymentJob } from "@/server/queues/queue-types";
@@ -19,12 +20,60 @@ export const config = {
 	},
 };
 
+const execFileAsync = promisify(execFile);
+
 const COMPOSE_FILENAMES = [
 	"docker-compose.yml",
 	"docker-compose.yaml",
 	"compose.yml",
 	"compose.yaml",
 ];
+
+async function extractComposeFromZip(zipPath: string): Promise<string | null> {
+	const extractDir = `${zipPath}-extracted`;
+
+	try {
+		await fs.promises.mkdir(extractDir, { recursive: true });
+
+		// Use unzip to list files first (no memory overhead)
+		let listing = "";
+		try {
+			const result = await execFileAsync("unzip", ["-Z1", zipPath]);
+			listing = result.stdout;
+		} catch (e: unknown) {
+			const err = e as { stdout?: string; code?: number };
+			// unzip -Z1 exits 1 if there are warnings but still outputs the list
+			if (err.stdout) {
+				listing = err.stdout;
+			} else {
+				throw new Error(`Failed to list ZIP contents: ${String(e)}`);
+			}
+		}
+
+		const lines = listing.split("\n").map((l) => l.trim()).filter(Boolean);
+
+		// Find a compose file entry
+		const targetEntry = lines.find((line) => {
+			const filename = line.split("/").pop()?.toLowerCase();
+			return filename && COMPOSE_FILENAMES.includes(filename);
+		});
+
+		if (!targetEntry) {
+			return null;
+		}
+
+		// Extract only that single file
+		await execFileAsync("unzip", ["-o", "-j", zipPath, targetEntry, "-d", extractDir]);
+
+		const extractedFile = path.join(extractDir, path.basename(targetEntry));
+		const content = await fs.promises.readFile(extractedFile, "utf-8");
+
+		return content;
+	} finally {
+		// Cleanup extract directory
+		await fs.promises.rm(extractDir, { recursive: true, force: true }).catch(() => {});
+	}
+}
 
 export default async function handler(
 	req: NextApiRequest,
@@ -44,9 +93,11 @@ export default async function handler(
 		return res.status(400).json({ error: "composeId is required" });
 	}
 
-	// Stream ZIP to a temp file
 	const tmpDir = os.tmpdir();
-	const tmpFile = path.join(tmpDir, `compose-zip-${Date.now()}-${Math.random().toString(36).slice(2)}.zip`);
+	const tmpFile = path.join(
+		tmpDir,
+		`compose-zip-${Date.now()}-${Math.random().toString(36).slice(2)}.zip`,
+	);
 
 	const cleanup = () => {
 		try {
@@ -54,27 +105,40 @@ export default async function handler(
 		} catch (_) {}
 	};
 
-	// Cleanup on client disconnect
-	req.on("close", cleanup);
+	let aborted = false;
 
 	try {
 		const writeStream = fs.createWriteStream(tmpFile);
-		await pipeline(req, writeStream);
 
-		// Parse ZIP and find docker-compose file
-		const zip = new AdmZip(tmpFile);
-		const entries = zip.getEntries();
+		req.on("aborted", () => {
+			aborted = true;
+			writeStream.destroy();
+			cleanup();
+		});
 
-		let composeContent: string | null = null;
-
-		for (const entry of entries) {
-			if (entry.isDirectory) continue;
-			const filename = entry.entryName.split("/").filter(Boolean).pop()?.toLowerCase();
-			if (filename && COMPOSE_FILENAMES.includes(filename)) {
-				composeContent = entry.getData().toString("utf-8");
-				break;
+		try {
+			await pipeline(req, writeStream);
+		} catch (pipeErr) {
+			cleanup();
+			if (aborted) {
+				return res.status(499).json({ error: "Upload cancelled by client" });
 			}
+			throw pipeErr;
 		}
+
+		if (aborted) {
+			return res.status(499).json({ error: "Upload cancelled by client" });
+		}
+
+		// Check file size
+		const stat = await fs.promises.stat(tmpFile);
+		if (stat.size === 0) {
+			cleanup();
+			return res.status(400).json({ error: "Uploaded file is empty" });
+		}
+
+		// Extract compose file using unzip (no memory overhead for large ZIPs)
+		const composeContent = await extractComposeFromZip(tmpFile);
 
 		if (!composeContent) {
 			cleanup();
