@@ -31,10 +31,8 @@ export const UpdateServerButton = () => {
 			return;
 		}
 
-		if (!localStorage.getItem("enableAutoCheckUpdates")) {
-			// Enable auto update checking by default if user didn't change it
-			localStorage.setItem("enableAutoCheckUpdates", "true");
-		}
+		// Always keep auto-update disabled; do not override user setting
+		localStorage.setItem("enableAutoCheckUpdates", "false");
 
 		const clearUpdatesInterval = () => {
 			if (checkUpdatesIntervalRef.current) {

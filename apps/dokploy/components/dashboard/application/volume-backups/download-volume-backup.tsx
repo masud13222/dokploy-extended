@@ -211,7 +211,7 @@ export const DownloadVolumeBackup = ({ volumeBackupId, serverId }: Props) => {
 									)}
 									disabled={!selectedDestinationId}
 								>
-									<span className="truncate text-left flex-1">
+									<span className="truncate text-left flex-1 min-w-0">
 										{selectedFile
 											? selectedFile.split("/").pop() || selectedFile
 											: selectedDestinationId
@@ -221,7 +221,10 @@ export const DownloadVolumeBackup = ({ volumeBackupId, serverId }: Props) => {
 									<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
 								</Button>
 							</PopoverTrigger>
-							<PopoverContent className="p-0" align="start">
+							<PopoverContent
+								className="p-0 w-[min(460px,90vw)]"
+								align="start"
+							>
 								<Command>
 									<CommandInput
 										placeholder="Search backup files..."
@@ -244,11 +247,12 @@ export const DownloadVolumeBackup = ({ volumeBackupId, serverId }: Props) => {
 										</div>
 									) : (
 										<ScrollArea className="h-64">
-											<CommandGroup className="w-96">
+											<CommandGroup>
 												{files.map((file) => (
 													<CommandItem
 														value={file.Path}
 														key={file.Path}
+														className="flex items-start gap-2"
 														onSelect={() => {
 															setSelectedFile(file.Path);
 															if (file.IsDir) {
@@ -260,14 +264,17 @@ export const DownloadVolumeBackup = ({ volumeBackupId, serverId }: Props) => {
 															}
 														}}
 													>
-														<div className="flex w-full flex-col gap-1">
-															<div className="flex w-full justify-between items-center">
-																<span className="font-medium text-sm truncate max-w-[280px]">
+														<div className="flex w-full min-w-0 flex-col gap-1">
+															<div className="flex w-full items-center gap-2">
+																<span
+																	className="font-medium text-sm break-all leading-tight flex-1"
+																	title={file.Path}
+																>
 																	{file.Path}
 																</span>
 																<CheckIcon
 																	className={cn(
-																		"ml-auto h-4 w-4 shrink-0",
+																		"h-4 w-4 shrink-0",
 																		file.Path === selectedFile
 																			? "opacity-100"
 																			: "opacity-0",
@@ -280,7 +287,7 @@ export const DownloadVolumeBackup = ({ volumeBackupId, serverId }: Props) => {
 																	<span className="text-blue-500">Directory</span>
 																)}
 																{file.Hashes?.MD5 && (
-																	<span>MD5: {file.Hashes.MD5}</span>
+																	<span className="truncate max-w-[120px]">MD5: {file.Hashes.MD5}</span>
 																)}
 															</div>
 														</div>

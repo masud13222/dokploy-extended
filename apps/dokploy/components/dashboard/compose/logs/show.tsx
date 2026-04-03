@@ -1,6 +1,6 @@
 import { Loader2 } from "lucide-react";
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { badgeStateColor } from "@/components/dashboard/application/logs/show";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -53,9 +53,11 @@ export const ShowDockerLogsCompose = ({
 		},
 	);
 	const [containerId, setContainerId] = useState<string | undefined>();
+	const hasInitialized = useRef(false);
 
 	useEffect(() => {
-		if (data && data?.length > 0) {
+		if (data && data.length > 0 && !hasInitialized.current) {
+			hasInitialized.current = true;
 			setContainerId(data[0]?.containerId);
 		}
 	}, [data]);
