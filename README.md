@@ -1,13 +1,24 @@
 <div align="center">
-  <a href="https://dokploy.com">
-    <img src=".github/sponsors/logo.png" alt="Dokploy - Open Source Alternative to Vercel, Heroku and Netlify." width="100%"  />
+  <a href="https://github.com/masud13222/dokploy-extended">
+    <img src=".github/sponsors/logo.png" alt="Dokploy Extended - Open Source Alternative to Vercel, Heroku and Netlify." width="100%"  />
   </a>
   </br>
   </br>
 </div>
+
+<div align="center">
+
+## 🚀 Quick Install
+
+```bash
+curl -sSL https://raw.githubusercontent.com/masud13222/dokploy-extended/main/install.sh | sh
+```
+
+</div>
+
 <br />
 
-Dokploy is a free, self-hostable Platform as a Service (PaaS) that simplifies the deployment and management of applications and databases.
+Dokploy Extended is a free, self-hostable Platform as a Service (PaaS) that simplifies the deployment and management of applications and databases. This is a customized fork of [Dokploy](https://dokploy.com) with additional features and improvements.
 
 ## ✨ Features
 
@@ -32,12 +43,12 @@ Dokploy is a free, self-hostable Platform as a Service (PaaS) that simplifies th
 Run the following command on a fresh Ubuntu/Debian VPS:
 
 ```bash
-curl -sSL https://dokploy.com/install.sh | sh
+curl -sSL https://raw.githubusercontent.com/masud13222/dokploy-extended/main/install.sh | sh
 ```
 
 ### Update (Self-Hosted via Docker Swarm)
 
-To update your running Dokploy instance to the latest custom build:
+To update your running Dokploy Extended instance to the latest custom build:
 
 **Latest stable build (from `main` branch):**
 ```bash
@@ -53,7 +64,7 @@ docker service update --image admin12mezba/dokploy:canary --force dokploy
 
 1. Docker + Docker Swarm is configured
 2. Traefik reverse proxy is deployed
-3. Dokploy service is started on port **3000**
+3. Dokploy Extended service is started on port **3000**
 4. Access the dashboard at `http://<YOUR_SERVER_IP>:3000`
 
 For detailed documentation, visit [docs.dokploy.com](https://docs.dokploy.com).
